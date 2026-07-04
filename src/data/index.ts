@@ -392,6 +392,99 @@ export const exercises: Exercise[] = [
     solutionExplanation: 'LET creates variables for reuse, improving performance and readability.',
     xpReward: 65, coinReward: 32, timeLimit: 180, bonusTimeThreshold: 50, order: 1,
   },
+  {
+    id: 'ex-18', lessonId: 'lesson-7', title: 'SUMIFS Multi-Condition',
+    description: 'Sum sales for product Laptop in the North region. Write the formula in cell D2.',
+    difficulty: 'intermediate',
+    instructions: [
+      'Use SUMIFS in cell D2',
+      'The sum range is C2:C5',
+      'Product criteria: product column A2:A5 must be "Laptop"',
+      'Region criteria: region column B2:B5 must be "North"',
+      'Formula: =SUMIFS(C2:C5,A2:A5,"Laptop",B2:B5,"North")',
+    ],
+    dataset: {
+      headers: ['Product', 'Region', 'Sales', 'Total Sales'],
+      rows: [
+        ['Laptop', 'North', 1200, ''],
+        ['Phone', 'North', 800, ''],
+        ['Laptop', 'South', 900, ''],
+        ['Phone', 'South', 500, '']
+      ]
+    },
+    expectedAnswer: [{ cell: 'D2', value: 1200, formula: '=SUMIFS(C2:C5,A2:A5,"Laptop",B2:B5,"North")' }],
+    hints: ['SUMIFS syntax: =SUMIFS(sum_range, criteria_range1, criteria1, criteria_range2, criteria2)'],
+    solution: '=SUMIFS(C2:C5,A2:A5,"Laptop",B2:B5,"North")',
+    solutionExplanation: 'SUMIFS sums values in C2:C5 where product is "Laptop" AND region is "North". Only row 2 matches, yielding 1200.',
+    xpReward: 50, coinReward: 25, timeLimit: 180, bonusTimeThreshold: 60, order: 2,
+  },
+  {
+    id: 'ex-19', lessonId: 'lesson-7', title: 'COUNTIFS Multi-Condition',
+    description: 'Count how many rows have product Laptop in the North region in cell D2.',
+    difficulty: 'intermediate',
+    instructions: [
+      'In cell D2, write a COUNTIFS formula',
+      'Check product column A2:A5 is "Laptop"',
+      'Check region column B2:B5 is "North"',
+      'Formula: =COUNTIFS(A2:A5,"Laptop",B2:B5,"North")',
+    ],
+    dataset: {
+      headers: ['Product', 'Region', 'Sales', 'Total Count'],
+      rows: [
+        ['Laptop', 'North', 1200, ''],
+        ['Phone', 'North', 800, ''],
+        ['Laptop', 'South', 900, ''],
+        ['Phone', 'South', 500, '']
+      ]
+    },
+    expectedAnswer: [{ cell: 'D2', value: 1, formula: '=COUNTIFS(A2:A5,"Laptop",B2:B5,"North")' }],
+    hints: ['Use: =COUNTIFS(A2:A5, "Laptop", B2:B5, "North")'],
+    solution: '=COUNTIFS(A2:A5,"Laptop",B2:B5,"North")',
+    solutionExplanation: 'COUNTIFS counts occurrences matching multiple criteria. Only 1 row matches both.',
+    xpReward: 45, coinReward: 22, timeLimit: 150, bonusTimeThreshold: 45, order: 3,
+  },
+  {
+    id: 'ex-20', lessonId: 'lesson-6', title: 'IFS Decision Formula',
+    description: 'Determine grade status in cell C2. If B2 >= 90 return "A", if B2 >= 80 return "B", otherwise return "C" using IFS.',
+    difficulty: 'intermediate',
+    instructions: [
+      'Use the IFS function in cell C2',
+      'If B2 >= 90, output "A"',
+      'If B2 >= 80, output "B"',
+      'Otherwise (use TRUE as criteria), output "C"',
+      'Formula: =IFS(B2>=90,"A",B2>=80,"B",TRUE,"C")',
+    ],
+    dataset: {
+      headers: ['Student', 'Score', 'Grade'],
+      rows: [['Emma', 92, '']]
+    },
+    expectedAnswer: [{ cell: 'C2', value: 'A', formula: '=IFS(B2>=90,"A",B2>=80,"B",TRUE,"C")' }],
+    hints: ['IFS syntax: =IFS(test1, val1, test2, val2, ...)'],
+    solution: '=IFS(B2>=90,"A",B2>=80,"B",TRUE,"C")',
+    solutionExplanation: 'IFS evaluates tests in order and returns the value of the first TRUE condition. B2 is 92, so B2>=90 is true, returning "A".',
+    xpReward: 50, coinReward: 25, timeLimit: 150, bonusTimeThreshold: 40, order: 2,
+  },
+  {
+    id: 'ex-21', lessonId: 'lesson-5', title: 'TEXTJOIN Combine Text',
+    description: 'Join the names in cells A2 to C2 with a comma and space delimiter. Ignore empty cells. Write the formula in cell D2.',
+    difficulty: 'beginner',
+    instructions: [
+      'Use TEXTJOIN in cell D2',
+      'Delimiter is ", "',
+      'ignore_empty parameter should be TRUE',
+      'The text range to join is A2:C2',
+      'Formula: =TEXTJOIN(", ",TRUE,A2:C2)',
+    ],
+    dataset: {
+      headers: ['First', 'Middle', 'Last', 'Joined Names'],
+      rows: [['John', 'Sarah', 'Priya', '']]
+    },
+    expectedAnswer: [{ cell: 'D2', value: 'John, Sarah, Priya', formula: '=TEXTJOIN(", ",TRUE,A2:C2)' }],
+    hints: ['TEXTJOIN syntax: =TEXTJOIN(delimiter, ignore_empty, range)'],
+    solution: '=TEXTJOIN(", ",TRUE,A2:C2)',
+    solutionExplanation: 'TEXTJOIN concatenates cells using a delimiter. =TEXTJOIN(", ", TRUE, A2:C2) combines the names.',
+    xpReward: 30, coinReward: 15, timeLimit: 120, bonusTimeThreshold: 30, order: 2,
+  },
 ];
 
 // ==================== BADGES ====================

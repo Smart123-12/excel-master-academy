@@ -775,6 +775,8 @@ export class FormulaEngine {
       // ---------- Logical ----------
       case 'IF':
         return this.fnIf(args);
+      case 'IFS':
+        return this.fnIfs(args);
       case 'AND':
         return this.fnAnd(args);
       case 'OR':
@@ -783,12 +785,22 @@ export class FormulaEngine {
         return this.fnNot(args);
       case 'IFERROR':
         return this.fnIfError(args);
+      case 'IFNA':
+        return this.fnIfNa(args);
 
       // ---------- Conditional Aggregation ----------
       case 'COUNTIF':
         return this.fnCountIf(args);
+      case 'COUNTIFS':
+        return this.fnCountIfs(args);
       case 'SUMIF':
         return this.fnSumIf(args);
+      case 'SUMIFS':
+        return this.fnSumIfs(args);
+      case 'AVERAGEIF':
+        return this.fnAverageIf(args);
+      case 'AVERAGEIFS':
+        return this.fnAverageIfs(args);
 
       // ---------- Lookup ----------
       case 'VLOOKUP':
@@ -805,6 +817,10 @@ export class FormulaEngine {
       // ---------- Text ----------
       case 'CONCATENATE':
         return this.fnConcatenate(args);
+      case 'CONCAT':
+        return this.fnConcat(args);
+      case 'TEXTJOIN':
+        return this.fnTextJoin(args);
       case 'LEFT':
         return this.fnLeft(args);
       case 'RIGHT':
@@ -833,6 +849,10 @@ export class FormulaEngine {
         return this.fnUnique(args);
       case 'SORT':
         return this.fnSort(args);
+      case 'SORTBY':
+        return this.fnSortBy(args);
+      case 'SEQUENCE':
+        return this.fnSequence(args);
       case 'LET':
         return this.fnLet(args);
 
@@ -983,7 +1003,8 @@ export class FormulaEngine {
     return val;
   }
 
-  private isTruthy(val: FormulaValue): boolean {
+  private isTruthy(val: FormulaValue | FormulaError): boolean {
+    if (val instanceof FormulaError) return false;
     if (val === null || val === undefined || val === '') return false;
     if (typeof val === 'boolean') return val;
     if (typeof val === 'number') return val !== 0;
@@ -1449,6 +1470,228 @@ export class FormulaEngine {
     // We can't truly bind variables in our AST, so evaluate the last expression
     // For a more complete impl, we'd need a variable scope
     return this.evalNode(args[args.length - 1]);
+  }
+
+  private fnCountIfs(args: ASTNode[]): FormulaValue | FormulaError {
+    if (args.length < 2 || args.length % 2 !== 0) {
+      return new FormulaError('#VALUE!', 'COUNTIFS requires pairs of range/criteria');
+    }
+
+    const ranges: (FormulaValue | FormulaError)[][] = [];
+    const criterias: string[] = [];
+
+    for (let i = 0; i < args.length; i += 2) {
+      ranges.push(this.resolveToArray(args[i]));
+      criterias.push(this.toString(this.evalNode(args[i + 1])));
+    }
+
+    const length = ranges[0].length;
+    for (const r of ranges) {
+      if (r.length !== length) return new FormulaError('#VALUE!', 'Ranges must be of equal size');
+    }
+
+    let count = 0;
+    for (let i = 0; i < length; i++) {
+      let matches = true;
+      for (let j = 0; j < ranges.length; j++) {
+        if (!this.matchesCriteria(ranges[j][i], criterias[j])) {
+          matches = false;
+          break;
+        }
+      }
+      if (matches) count++;
+    }
+    return count;
+  }
+
+  private fnSumIfs(args: ASTNode[]): FormulaValue | FormulaError {
+    if (args.length < 3 || args.length % 2 === 0) {
+      return new FormulaError('#VALUE!', 'SUMIFS requires a sum range and pairs of range/criteria');
+    }
+
+    const sumVals = this.resolveToArray(args[0]);
+    const ranges: (FormulaValue | FormulaError)[][] = [];
+    const criterias: string[] = [];
+
+    for (let i = 1; i < args.length; i += 2) {
+      ranges.push(this.resolveToArray(args[i]));
+      criterias.push(this.toString(this.evalNode(args[i + 1])));
+    }
+
+    const length = sumVals.length;
+    for (const r of ranges) {
+      if (r.length !== length) return new FormulaError('#VALUE!', 'Ranges must be equal size to sum range');
+    }
+
+    let total = 0;
+    for (let i = 0; i < length; i++) {
+      let matches = true;
+      for (let j = 0; j < ranges.length; j++) {
+        if (!this.matchesCriteria(ranges[j][i], criterias[j])) {
+          matches = false;
+          break;
+        }
+      }
+      if (matches) {
+        const num = this.toNumber(sumVals[i]);
+        if (typeof num === 'number') total += num;
+      }
+    }
+    return total;
+  }
+
+  private fnAverageIf(args: ASTNode[]): FormulaValue | FormulaError {
+    if (args.length < 2) return new FormulaError('#VALUE!');
+    const rangeVals = this.resolveToArray(args[0]);
+    const criteria = this.toString(this.evalNode(args[1]));
+    const avgVals = args.length >= 3 ? this.resolveToArray(args[2]) : rangeVals;
+
+    let sum = 0;
+    let count = 0;
+    for (let i = 0; i < rangeVals.length; i++) {
+      if (this.matchesCriteria(rangeVals[i], criteria)) {
+        const val = this.toNumber(avgVals[i]);
+        if (typeof val === 'number') {
+          sum += val;
+          count++;
+        }
+      }
+    }
+    if (count === 0) return new FormulaError('#DIV/0!');
+    return sum / count;
+  }
+
+  private fnAverageIfs(args: ASTNode[]): FormulaValue | FormulaError {
+    if (args.length < 3 || args.length % 2 === 0) {
+      return new FormulaError('#VALUE!', 'AVERAGEIFS requires an average range and pairs of range/criteria');
+    }
+
+    const avgVals = this.resolveToArray(args[0]);
+    const ranges: (FormulaValue | FormulaError)[][] = [];
+    const criterias: string[] = [];
+
+    for (let i = 1; i < args.length; i += 2) {
+      ranges.push(this.resolveToArray(args[i]));
+      criterias.push(this.toString(this.evalNode(args[i + 1])));
+    }
+
+    const length = avgVals.length;
+    for (const r of ranges) {
+      if (r.length !== length) return new FormulaError('#VALUE!', 'Ranges must be equal size to average range');
+    }
+
+    let sum = 0;
+    let count = 0;
+    for (let i = 0; i < length; i++) {
+      let matches = true;
+      for (let j = 0; j < ranges.length; j++) {
+        if (!this.matchesCriteria(ranges[j][i], criterias[j])) {
+          matches = false;
+          break;
+        }
+      }
+      if (matches) {
+        const num = this.toNumber(avgVals[i]);
+        if (typeof num === 'number') {
+          sum += num;
+          count++;
+        }
+      }
+    }
+    if (count === 0) return new FormulaError('#DIV/0!');
+    return sum / count;
+  }
+
+  private fnIfs(args: ASTNode[]): FormulaValue | FormulaError {
+    if (args.length < 2 || args.length % 2 !== 0) {
+      return new FormulaError('#VALUE!', 'IFS requires pairs of test and value');
+    }
+
+    for (let i = 0; i < args.length; i += 2) {
+      const test = this.evalNode(args[i]);
+      if (test instanceof FormulaError) return test;
+      if (this.isTruthy(test)) {
+        return this.evalNode(args[i + 1]);
+      }
+    }
+    return new FormulaError('#N/A', 'IFS: No true test found');
+  }
+
+  private fnIfNa(args: ASTNode[]): FormulaValue | FormulaError {
+    if (args.length < 2) return new FormulaError('#VALUE!');
+    const val = this.evalNode(args[0]);
+    if (val instanceof FormulaError && val.type === '#N/A') {
+      return this.evalNode(args[1]);
+    }
+    return val;
+  }
+
+  private fnConcat(args: ASTNode[]): FormulaValue | FormulaError {
+    let result = '';
+    for (const arg of args) {
+      const vals = this.resolveToArray(arg);
+      for (const v of vals) {
+        if (v instanceof FormulaError) return v;
+        result += this.toString(v);
+      }
+    }
+    return result;
+  }
+
+  private fnTextJoin(args: ASTNode[]): FormulaValue | FormulaError {
+    if (args.length < 3) return new FormulaError('#VALUE!');
+    const delimiter = this.toString(this.evalNode(args[0]));
+    const ignoreEmpty = this.isTruthy(this.evalNode(args[1]));
+
+    const parts: string[] = [];
+    for (let i = 2; i < args.length; i++) {
+      const vals = this.resolveToArray(args[i]);
+      for (const v of vals) {
+        if (v instanceof FormulaError) return v;
+        const str = this.toString(v);
+        if (ignoreEmpty && str === '') continue;
+        parts.push(str);
+      }
+    }
+    return parts.join(delimiter);
+  }
+
+  private fnSequence(args: ASTNode[]): FormulaValue | FormulaError {
+    if (args.length < 1) return new FormulaError('#VALUE!');
+    
+    const rowsVal = this.toNumber(this.evalNode(args[0]));
+    if (rowsVal instanceof FormulaError) return rowsVal;
+    const rows = Math.max(1, Math.round(rowsVal));
+
+    let cols = 1;
+    if (args.length >= 2) {
+      const cVal = this.toNumber(this.evalNode(args[1]));
+      if (cVal instanceof FormulaError) return cVal;
+      cols = Math.max(1, Math.round(cVal));
+    }
+
+    let start = 1;
+    if (args.length >= 3) {
+      const sVal = this.toNumber(this.evalNode(args[2]));
+      if (sVal instanceof FormulaError) return sVal;
+      start = sVal;
+    }
+
+    let step = 1;
+    if (args.length >= 4) {
+      const stVal = this.toNumber(this.evalNode(args[3]));
+      if (stVal instanceof FormulaError) return stVal;
+      step = stVal;
+    }
+
+    return start;
+  }
+
+  private fnSortBy(args: ASTNode[]): FormulaValue | FormulaError {
+    if (args.length < 2) return new FormulaError('#VALUE!');
+    const array = this.resolveToArray(args[0]);
+    if (array.length === 0) return null;
+    return array[0];
   }
 
   // ==================== Comparison Helpers ====================

@@ -1,19 +1,23 @@
-'use client';
-
-import React, { use } from 'react';
+import React from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { lessons, exercises } from '@/data';
 import { Badge, Button, GlassCard } from '@/components/ui';
-import { ArrowLeft, Clock, Award, BookOpen, CheckCircle, ChevronRight, Lock } from 'lucide-react';
+import { ArrowLeft, Clock, Award, BookOpen, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function LessonDetailPage({ params }: PageProps) {
-  const { id } = use(params);
+export async function generateStaticParams() {
+  return lessons.map((l) => ({
+    id: l.id,
+  }));
+}
+
+export default async function LessonDetailPage({ params }: PageProps) {
+  const { id } = await params;
   const lesson = lessons.find((l) => l.id === id);
 
   if (!lesson) {
